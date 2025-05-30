@@ -1,13 +1,13 @@
 'use client';
 
-import type { Control, FieldErrors, UseFieldArrayAppend, UseFieldArrayRemove, UseFormRegister } from 'react-hook-form';
+import type { Control, FieldErrors, UseFieldArrayAppend, UseFieldArrayRemove, UseFormRegister, UseFormSetValue } from 'react-hook-form';
 import type { ManualData, ManualStep } from '@/types/manual';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, UploadCloud } from 'lucide-react';
 import { Separator } from './ui/separator';
 
 interface ManualFormProps {
@@ -17,6 +17,7 @@ interface ManualFormProps {
   stepsFields: ManualStep[]; // from useFieldArray
   appendStep: UseFieldArrayAppend<ManualData, 'steps'>;
   removeStep: UseFieldArrayRemove;
+  setValue: UseFormSetValue<ManualData>;
 }
 
 export function ManualForm({
@@ -25,9 +26,27 @@ export function ManualForm({
   stepsFields,
   appendStep,
   removeStep,
+  setValue,
 }: ManualFormProps) {
   const addNewStep = () => {
     appendStep({ id: crypto.randomUUID(), title: '', imageUrl: '', description: '' });
+  };
+
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    fieldName: keyof ManualData | `steps.${number}.imageUrl`
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setValue(fieldName, reader.result as string, { shouldValidate: true });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // If no file is selected (e.g., user cancels dialog), clear the value
+      setValue(fieldName, '', { shouldValidate: true });
+    }
   };
 
   return (
@@ -51,14 +70,17 @@ export function ManualForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="headerImageUrl" className="text-foreground/90">Header Image URL</Label>
-          <Input
-            id="headerImageUrl"
-            type="url"
-            placeholder="https://example.com/header-image.png"
-            {...register('headerImageUrl')}
-            className={errors.headerImageUrl ? 'border-destructive' : ''}
-          />
+          <Label htmlFor="headerImageFile" className="text-foreground/90">Header Image</Label>
+          <div className="flex items-center gap-2">
+            <UploadCloud className="h-5 w-5 text-muted-foreground" />
+            <Input
+              id="headerImageFile"
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleFileChange(e, 'headerImageUrl')}
+              className={`cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 ${errors.headerImageUrl ? 'border-destructive' : ''}`}
+            />
+          </div>
           {errors.headerImageUrl && (
             <p className="text-sm text-destructive">{errors.headerImageUrl.message}</p>
           )}
@@ -101,14 +123,17 @@ export function ManualForm({
                   )}
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor={`steps.${index}.imageUrl`} className="text-xs text-foreground/80">Step Image URL</Label>
-                  <Input
-                    id={`steps.${index}.imageUrl`}
-                    type="url"
-                    placeholder="https://example.com/step-image.png"
-                    {...register(`steps.${index}.imageUrl`)}
-                     className={errors.steps?.[index]?.imageUrl ? 'border-destructive' : ''}
-                  />
+                  <Label htmlFor={`steps.${index}.imageFile`} className="text-xs text-foreground/80">Step Image</Label>
+                  <div className="flex items-center gap-2">
+                    <UploadCloud className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id={`steps.${index}.imageFile`}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, `steps.${index}.imageUrl`)}
+                      className={`cursor-pointer file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 ${errors.steps?.[index]?.imageUrl ? 'border-destructive' : ''}`}
+                    />
+                  </div>
                    {errors.steps?.[index]?.imageUrl && (
                     <p className="text-sm text-destructive">
                       {errors.steps[index]?.imageUrl?.message}

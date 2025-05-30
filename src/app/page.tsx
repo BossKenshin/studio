@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm, useFieldArray, SubmitHandler } from 'react-hook-form';
+import { useForm, useFieldArray, SubmitHandler, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import jsPDF from 'jspdf';
@@ -18,13 +18,13 @@ import { useToast } from '@/hooks/use-toast';
 const manualStepSchema = z.object({
   id: z.string(),
   title: z.string().min(1, 'Step title is required').max(100, 'Step title is too long'),
-  imageUrl: z.string().url('Must be a valid URL').or(z.literal('')),
+  imageUrl: z.string().or(z.literal('')), // Accepts data URI or empty string
   description: z.string().min(1, 'Step description is required').max(1000, 'Step description is too long'),
 });
 
 const manualDataSchema = z.object({
   manualTitle: z.string().min(1, 'Manual title is required').max(150, 'Manual title is too long'),
-  headerImageUrl: z.string().url('Must be a valid URL').or(z.literal('')),
+  headerImageUrl: z.string().or(z.literal('')), // Accepts data URI or empty string
   steps: z.array(manualStepSchema),
 });
 
@@ -45,7 +45,7 @@ export default function Home() {
     mode: 'onChange', // Watch for changes to update preview
   });
 
-  const { control, register, formState: { errors }, watch, handleSubmit } = form;
+  const { control, register, formState: { errors }, watch, handleSubmit, setValue } = form;
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -75,7 +75,7 @@ export default function Home() {
     try {
       const canvas = await html2canvas(previewElement, {
         scale: 2, // Improve quality
-        useCORS: true, // For external images
+        useCORS: true, // For external images (though data URLs don't need CORS)
         logging: false,
         onclone: (document) => { // Ensure all images are loaded before rendering
           Array.from(document.images).forEach(img => {
@@ -176,9 +176,10 @@ export default function Home() {
             control={control}
             register={register}
             errors={errors}
-            stepsFields={fields as ManualData['steps']} // Cast because react-hook-form types FieldArray fields with an internal _id
+            stepsFields={fields as ManualData['steps']} 
             appendStep={append}
             removeStep={remove}
+            setValue={setValue as UseFormSetValue<ManualData>}
           />
         </section>
         <section className="w-full md:w-1/2 p-3 md:p-4 bg-muted/30 overflow-y-auto transition-all duration-300">
