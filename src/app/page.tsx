@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -75,9 +76,9 @@ export default function Home() {
     try {
       const canvas = await html2canvas(previewElement, {
         scale: 2, // Improve quality
-        useCORS: true, // For external images (though data URLs don't need CORS)
+        useCORS: true,
         logging: false,
-        onclone: (document) => { // Ensure all images are loaded before rendering
+        onclone: (document) => {
           Array.from(document.images).forEach(img => {
             if (img.complete) return;
             img.loading = 'eager';
@@ -85,28 +86,78 @@ export default function Home() {
         }
       });
       
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
-        unit: 'pt', // points
-        format: 'a4', // A4 paper size
+        unit: 'pt',
+        format: 'a4',
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const pdfPageWidth = pdf.internal.pageSize.getWidth();
+      const pdfPageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20; // 20 points margin on each side
+      
+      const contentWidth = pdfPageWidth - (2 * margin);
+      const contentHeight = pdfPageHeight - (2 * margin);
+
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
-      
-      // Calculate aspect ratio to fit image into PDF page
-      const ratio = Math.min(pdfWidth / canvasWidth, pdfHeight / canvasHeight);
-      const imgWidth = canvasWidth * ratio;
-      const imgHeight = canvasHeight * ratio;
 
-      // Center the image on the PDF page
-      const x = (pdfWidth - imgWidth) / 2;
-      const y = (pdfHeight - imgHeight) / 2;
+      // Calculate the total height the canvas image would take if scaled to contentWidth
+      const totalScaledCanvasHeight = (canvasHeight / canvasWidth) * contentWidth;
+
+      if (totalScaledCanvasHeight <= contentHeight) {
+        // Content fits on a single page
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, margin, contentWidth, totalScaledCanvasHeight);
+      } else {
+        // Content needs to be paginated
+        let remainingCanvasHeight = canvasHeight;
+        let currentCanvasY = 0; // Y-offset for cropping from the source canvas
+
+        while (remainingCanvasHeight > 0) {
+          // Calculate the height of the canvas slice that corresponds to one PDF page's contentHeight
+          // This slice, when its width (canvasWidth) is scaled to contentWidth, will have a height of contentHeight on PDF
+          // while maintaining aspect ratio.
+          let sliceCanvasHeight = (contentHeight / contentWidth) * canvasWidth;
+          sliceCanvasHeight = Math.min(sliceCanvasHeight, remainingCanvasHeight); // Don't crop more than what's left
+
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = canvasWidth;
+          tempCanvas.height = sliceCanvasHeight;
+          const tempCtx = tempCanvas.getContext('2d');
+
+          if (!tempCtx) {
+            throw new Error("Failed to get 2D context for temporary canvas slice.");
+          }
+
+          // Draw the slice from the main canvas to the temporary canvas
+          tempCtx.drawImage(
+            canvas,             // Source canvas
+            0,                  // Source X
+            currentCanvasY,     // Source Y (where to start cropping from main canvas)
+            canvasWidth,        // Source Width
+            sliceCanvasHeight,  // Source Height (height of the slice to crop)
+            0,                  // Destination X on temp canvas
+            0,                  // Destination Y on temp canvas
+            canvasWidth,        // Destination Width on temp canvas
+            sliceCanvasHeight   // Destination Height on temp canvas
+          );
+          
+          const sliceImgData = tempCanvas.toDataURL('image/png');
+          
+          // Calculate the height of this slice when rendered on the PDF
+          const slicePdfHeight = (sliceCanvasHeight / canvasWidth) * contentWidth;
+          
+          pdf.addImage(sliceImgData, 'PNG', margin, margin, contentWidth, slicePdfHeight);
+
+          remainingCanvasHeight -= sliceCanvasHeight;
+          currentCanvasY += sliceCanvasHeight;
+
+          if (remainingCanvasHeight > 0) {
+            pdf.addPage();
+          }
+        }
+      }
       
-      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
       pdf.save(`${watchedData.manualTitle || 'manual'}.pdf`);
       toast({
         title: "Success!",
@@ -114,9 +165,13 @@ export default function Home() {
       });
     } catch (error) {
       console.error("Error exporting PDF:", error);
+      let errorMessage = "An error occurred while exporting the PDF. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       toast({
         title: "Export Failed",
-        description: "An error occurred while exporting the PDF. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -126,6 +181,7 @@ export default function Home() {
   
   // This onSubmit is for form validation trigger, not actual submission
   const onSubmit: SubmitHandler<ManualData> = (_data) => {
+    // Could validate _data here if needed before calling export
     handleExportPdf();
   };
 
@@ -160,7 +216,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <ManualMaestroLogo />
         </div>
-        <Button onClick={handleSubmit(onSubmit)} disabled={isExporting} aria-label="Export to PDF">
+        <Button onClick={handleSubmit(onSubmit)} disabled={isExporting || !form.formState.isValid} aria-label="Export to PDF">
           {isExporting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
@@ -176,7 +232,7 @@ export default function Home() {
             control={control}
             register={register}
             errors={errors}
-            stepsFields={fields as ManualData['steps']} 
+            stepsFields={fields as unknown as ManualData['steps']} 
             appendStep={append}
             removeStep={remove}
             setValue={setValue as UseFormSetValue<ManualData>}
@@ -189,3 +245,4 @@ export default function Home() {
     </div>
   );
 }
+
