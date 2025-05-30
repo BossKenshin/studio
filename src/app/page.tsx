@@ -244,17 +244,25 @@ export default function Home() {
 
     try {
       const pptx = new PptxGenJS();
-      pptx.layout = 'LAYOUT_16x9'; // Standard widescreen layout
+      pptx.layout = 'LAYOUT_16x9'; // Standard widescreen layout (10" x 5.625")
 
       let contentHasBeenAdded = false;
       const canvasOptions = {
-        scale: 2,
+        scale: 2, // Higher scale for better image quality
         useCORS: true,
         logging: false,
         onclone: cloneDocumentImages,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#ffffff', // Ensure transparent backgrounds are white
       };
-      const imageOptions: PptxGenJS.ImageProps = { x: 0.5, y: 0.25, w: 9.0, h: 7.0, sizing: { type: 'contain', w: 9.0, h: 7.0 } };
+
+      // Define image options for slides: 0.25-inch margin on a 10x5.625 inch slide
+      const imageOptions: PptxGenJS.ImageProps = { 
+        x: 0.25, 
+        y: 0.25, 
+        w: 9.5,  // 10 - 0.25 - 0.25
+        h: 5.125, // 5.625 - 0.25 - 0.25
+        sizing: { type: 'contain', w: 9.5, h: 5.125 } 
+      };
 
 
       const headerElement = document.getElementById('pdf-header-content');
