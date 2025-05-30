@@ -329,7 +329,7 @@ export default function Home() {
         <div className="flex flex-col h-screen">
             <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-md shadow-sm">
                 <ManualMaestroLogo />
-                <div className="w-32 h-10 bg-muted rounded animate-pulse"></div>
+                <div className="w-32 h-10 bg-muted rounded animate-pulse"></div> {/* Placeholder for buttons */}
             </header>
             <main className="flex flex-1 overflow-hidden">
                 <div className="w-1/2 p-4 border-r overflow-y-auto animate-pulse">
@@ -354,7 +354,12 @@ export default function Home() {
           <ManualMaestroLogo />
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={handleExportPpt} disabled={isExportingPdf || isExportingPpt || !isValid} aria-label="Export to PowerPoint">
+          <Button 
+            onClick={handleExportPpt} 
+            disabled={isExportingPdf || isExportingPpt || !isValid} 
+            aria-label="Export to PowerPoint" 
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+          >
             {isExportingPpt ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -362,7 +367,12 @@ export default function Home() {
             )}
             Export PPT
           </Button>
-          <Button onClick={handleSubmit(onPdfSubmit)} disabled={isExportingPdf || isExportingPpt || !isValid} aria-label="Export to PDF">
+          <Button 
+            onClick={handleSubmit(onPdfSubmit)} 
+            disabled={isExportingPdf || isExportingPpt || !isValid} 
+            aria-label="Export to PDF"
+            variant="secondary"
+          >
             {isExportingPdf ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
