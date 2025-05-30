@@ -21,7 +21,7 @@ export function PdfPreview({ data }: PdfPreviewProps) {
           
           {/* Section for PDF Header Content */}
           <div id="pdf-header-content" className="p-8 break-inside-avoid">
-            <h1 className="text-4xl font-bold mb-6 text-center text-gray-800 break-words">
+            <h1 className="text-3xl font-bold mb-6 text-center text-gray-800 break-words">
               {data.manualTitle || 'Manual Title'}
             </h1>
             {data.headerImageUrl && (
@@ -36,7 +36,7 @@ export function PdfPreview({ data }: PdfPreviewProps) {
                 />
               </div>
             )}
-             {!(data.manualTitle || data.headerImageUrl) && data.steps.length === 0 && (
+            {!(data.manualTitle || data.headerImageUrl) && data.steps.length === 0 && (
                 <div className="text-center text-gray-500 py-10 min-h-[50px]"> 
                     {/* Placeholder for empty header if no steps either */}
                 </div>
@@ -50,7 +50,7 @@ export function PdfPreview({ data }: PdfPreviewProps) {
               id={`pdf-step-content-${index}`} // Unique ID for each step
               className="p-8 mb-0 border-t border-gray-100 bg-white break-inside-avoid" // Added p-8 for consistent padding like header
             >
-              <h2 className="text-2xl font-semibold mb-3 text-gray-700 break-words">
+              <h2 className="text-1xl font-semibold mb-3 text-gray-700 break-words">
                 Step {index + 1}: {step.title || 'Step Title'}
               </h2>
               {step.imageUrl && (
