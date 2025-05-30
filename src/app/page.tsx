@@ -368,7 +368,7 @@ export default function Home() {
             Export PPT
           </Button>
           <Button
-            variant="secondary" // Changed variant to secondary for grey color
+          //  variant="secondary" // Changed variant to secondary for grey color
             onClick={handleSubmit(onPdfSubmit)}
             disabled={isExportingPdf || isExportingPpt || !isValid}
             aria-label="Export to PDF"
@@ -380,15 +380,16 @@ export default function Home() {
             )}
             Export PDF
           </Button>
-          <a
-            href="https://github.com/BossKenshin"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="View source on GitHub"
-            className="p-2 rounded-md hover:bg-accent/10 text-foreground hover:text-accent-foreground transition-colors"
-          >
-            <Github className="h-5 w-5" />
-          </a>
+         <a
+          href="https://github.com/BossKenshin"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="View source on GitHub"
+          className="p-2 rounded-md bg-gray-900 text-white hover:bg-gray-800 hover:text-gray-200 transition-colors"
+        >
+          <Github className="h-5 w-5" />
+        </a>
+
         </div>
       </header>
 
