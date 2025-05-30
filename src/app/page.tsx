@@ -30,10 +30,89 @@ const manualDataSchema = z.object({
 });
 
 const defaultValues: ManualData = {
-  manualTitle: '',
+  manualTitle: 'My Awesome Manual',
   headerImageUrl: '',
-  steps: [{ id: crypto.randomUUID(), title: '', imageUrl: '', description: '' }],
+  steps: [{ id: crypto.randomUUID(), title: 'Step 1: Get Started', imageUrl: '', description: 'This is the first thing you need to do.' }],
 };
+
+// Helper function to handle image loading in html2canvas onclone
+const cloneDocumentImages = (documentClone: Document) => {
+  Array.from(documentClone.images).forEach(img => {
+    if (img.complete) return;
+    img.loading = 'eager'; // Attempt to force load
+    // For cross-origin images, html2canvas with useCORS: true should handle them.
+    // If images are still not loading, more robust preloading strategies might be needed.
+  });
+};
+
+// Helper function to add a canvas (potentially paginated) to the PDF
+async function addCanvasToPdf(
+  pdfInstance: jsPDF,
+  canvas: HTMLCanvasElement,
+  pageWidth: number,
+  pageHeight: number,
+  itemMargin: number
+) {
+  const contentWidth = pageWidth - (2 * itemMargin);
+  const contentHeight = pageHeight - (2 * itemMargin);
+  const canvasWidth = canvas.width;
+  const canvasHeight = canvas.height;
+
+  if (canvasWidth === 0 || canvasHeight === 0) return; // Skip empty canvas
+
+  const totalScaledCanvasHeight = (canvasHeight / canvasWidth) * contentWidth;
+
+  if (totalScaledCanvasHeight <= contentHeight) {
+    pdfInstance.addImage(canvas.toDataURL('image/png'), 'PNG', itemMargin, itemMargin, contentWidth, totalScaledCanvasHeight);
+  } else {
+    // Content needs to be paginated
+    let remainingCanvasHeight = canvasHeight;
+    let currentCanvasY = 0; // Y-offset for cropping from the source canvas
+    let isFirstSlice = true;
+
+    while (remainingCanvasHeight > 0) {
+      if (!isFirstSlice) {
+        pdfInstance.addPage();
+      }
+      isFirstSlice = false;
+
+      // Calculate the height of the canvas slice that corresponds to one PDF page's contentHeight
+      let sliceCanvasHeight = (contentHeight / contentWidth) * canvasWidth;
+      sliceCanvasHeight = Math.min(sliceCanvasHeight, remainingCanvasHeight);
+
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvasWidth;
+      tempCanvas.height = sliceCanvasHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      if (!tempCtx) {
+        console.error("Failed to get 2D context for temporary canvas slice.");
+        return; // Or throw error
+      }
+
+      tempCtx.drawImage(
+        canvas,
+        0,
+        currentCanvasY,
+        canvasWidth,
+        sliceCanvasHeight,
+        0,
+        0,
+        canvasWidth,
+        sliceCanvasHeight
+      );
+      
+      const sliceImgData = tempCanvas.toDataURL('image/png');
+      const slicePdfHeight = (sliceCanvasHeight / canvasWidth) * contentWidth;
+      
+      pdfInstance.addImage(sliceImgData, 'PNG', itemMargin, itemMargin, contentWidth, slicePdfHeight);
+
+      remainingCanvasHeight -= sliceCanvasHeight;
+      currentCanvasY += sliceCanvasHeight;
+    }
+  }
+}
+
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
@@ -43,17 +122,16 @@ export default function Home() {
   const form = useForm<ManualData>({
     resolver: zodResolver(manualDataSchema),
     defaultValues,
-    mode: 'onChange', // Watch for changes to update preview
+    mode: 'onChange',
   });
 
-  const { control, register, formState: { errors }, watch, handleSubmit, setValue } = form;
+  const { control, register, formState: { errors, isValid }, watch, handleSubmit, setValue } = form;
 
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'steps',
   });
 
-  // Watch all form data for live preview
   const watchedData = watch();
 
   useEffect(() => {
@@ -61,31 +139,17 @@ export default function Home() {
   }, []);
 
   const handleExportPdf = async () => {
-    setIsExporting(true);
-    const previewElement = document.getElementById('pdf-preview-content');
-    if (!previewElement) {
-      toast({
-        title: "Error",
-        description: "Preview content not found. Cannot export PDF.",
-        variant: "destructive",
-      });
-      setIsExporting(false);
-      return;
+    if (!isValid) {
+        toast({
+            title: "Form Invalid",
+            description: "Please correct the errors in the form before exporting.",
+            variant: "destructive",
+        });
+        return;
     }
+    setIsExporting(true);
 
     try {
-      const canvas = await html2canvas(previewElement, {
-        scale: 2, // Improve quality
-        useCORS: true,
-        logging: false,
-        onclone: (document) => {
-          Array.from(document.images).forEach(img => {
-            if (img.complete) return;
-            img.loading = 'eager';
-          });
-        }
-      });
-      
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'pt',
@@ -94,75 +158,66 @@ export default function Home() {
 
       const pdfPageWidth = pdf.internal.pageSize.getWidth();
       const pdfPageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 20; // 20 points margin on each side
+      const margin = 30; // Increased margin for better aesthetics
       
-      const contentWidth = pdfPageWidth - (2 * margin);
-      const contentHeight = pdfPageHeight - (2 * margin);
+      let contentHasBeenAdded = false;
 
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
+      // 1. Capture and add Header (Title and Header Image)
+      const headerElement = document.getElementById('pdf-header-content');
+      if (headerElement && (watchedData.manualTitle.trim() !== '' || watchedData.headerImageUrl !== '')) {
+        const headerCanvas = await html2canvas(headerElement, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          onclone: cloneDocumentImages,
+          backgroundColor: '#ffffff', // Ensure background for transparent images
+        });
+        if (headerCanvas.width > 0 && headerCanvas.height > 0) {
+          await addCanvasToPdf(pdf, headerCanvas, pdfPageWidth, pdfPageHeight, margin);
+          contentHasBeenAdded = true;
+        }
+      }
 
-      // Calculate the total height the canvas image would take if scaled to contentWidth
-      const totalScaledCanvasHeight = (canvasHeight / canvasWidth) * contentWidth;
+      // 2. Capture and add Each Step on a New Page
+      for (let i = 0; i < watchedData.steps.length; i++) {
+        const stepElement = document.getElementById(`pdf-step-content-${i}`);
+        if (stepElement) {
+          const stepCanvas = await html2canvas(stepElement, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            onclone: cloneDocumentImages,
+            backgroundColor: '#ffffff',
+          });
 
-      if (totalScaledCanvasHeight <= contentHeight) {
-        // Content fits on a single page
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, margin, contentWidth, totalScaledCanvasHeight);
-      } else {
-        // Content needs to be paginated
-        let remainingCanvasHeight = canvasHeight;
-        let currentCanvasY = 0; // Y-offset for cropping from the source canvas
-
-        while (remainingCanvasHeight > 0) {
-          // Calculate the height of the canvas slice that corresponds to one PDF page's contentHeight
-          // This slice, when its width (canvasWidth) is scaled to contentWidth, will have a height of contentHeight on PDF
-          // while maintaining aspect ratio.
-          let sliceCanvasHeight = (contentHeight / contentWidth) * canvasWidth;
-          sliceCanvasHeight = Math.min(sliceCanvasHeight, remainingCanvasHeight); // Don't crop more than what's left
-
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = canvasWidth;
-          tempCanvas.height = sliceCanvasHeight;
-          const tempCtx = tempCanvas.getContext('2d');
-
-          if (!tempCtx) {
-            throw new Error("Failed to get 2D context for temporary canvas slice.");
-          }
-
-          // Draw the slice from the main canvas to the temporary canvas
-          tempCtx.drawImage(
-            canvas,             // Source canvas
-            0,                  // Source X
-            currentCanvasY,     // Source Y (where to start cropping from main canvas)
-            canvasWidth,        // Source Width
-            sliceCanvasHeight,  // Source Height (height of the slice to crop)
-            0,                  // Destination X on temp canvas
-            0,                  // Destination Y on temp canvas
-            canvasWidth,        // Destination Width on temp canvas
-            sliceCanvasHeight   // Destination Height on temp canvas
-          );
-          
-          const sliceImgData = tempCanvas.toDataURL('image/png');
-          
-          // Calculate the height of this slice when rendered on the PDF
-          const slicePdfHeight = (sliceCanvasHeight / canvasWidth) * contentWidth;
-          
-          pdf.addImage(sliceImgData, 'PNG', margin, margin, contentWidth, slicePdfHeight);
-
-          remainingCanvasHeight -= sliceCanvasHeight;
-          currentCanvasY += sliceCanvasHeight;
-
-          if (remainingCanvasHeight > 0) {
-            pdf.addPage();
+          if (stepCanvas.width > 0 && stepCanvas.height > 0) {
+            if (contentHasBeenAdded) { // If header or a previous step was added
+              pdf.addPage();
+            } else {
+              // This is the first piece of content (e.g. no header, first step)
+              contentHasBeenAdded = true; 
+            }
+            await addCanvasToPdf(pdf, stepCanvas, pdfPageWidth, pdfPageHeight, margin);
           }
         }
       }
       
-      pdf.save(`${watchedData.manualTitle || 'manual'}.pdf`);
+      if (!contentHasBeenAdded) {
+        toast({
+          title: "Empty Manual",
+          description: "There is no content to export.",
+          variant: "destructive",
+        });
+        setIsExporting(false);
+        return;
+      }
+
+      pdf.save(`${watchedData.manualTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'manual'}.pdf`);
       toast({
         title: "Success!",
         description: "Your manual has been exported as a PDF.",
       });
+
     } catch (error) {
       console.error("Error exporting PDF:", error);
       let errorMessage = "An error occurred while exporting the PDF. Please try again.";
@@ -179,15 +234,11 @@ export default function Home() {
     }
   };
   
-  // This onSubmit is for form validation trigger, not actual submission
   const onSubmit: SubmitHandler<ManualData> = (_data) => {
-    // Could validate _data here if needed before calling export
     handleExportPdf();
   };
 
-
   if (!isClient) {
-    // Render a loading state or null on the server
     return (
         <div className="flex flex-col h-screen">
             <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-md shadow-sm">
@@ -216,7 +267,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <ManualMaestroLogo />
         </div>
-        <Button onClick={handleSubmit(onSubmit)} disabled={isExporting || !form.formState.isValid} aria-label="Export to PDF">
+        <Button onClick={handleSubmit(onSubmit)} disabled={isExporting || !isValid} aria-label="Export to PDF">
           {isExporting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
@@ -245,4 +296,3 @@ export default function Home() {
     </div>
   );
 }
-
