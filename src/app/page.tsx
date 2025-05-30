@@ -7,13 +7,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import PptxGenJS from 'pptxgenjs';
 
 import type { ManualData } from '@/types/manual';
 import { ManualForm } from '@/components/manual-form';
 import { PdfPreview } from '@/components/pdf-preview';
 import { Button } from '@/components/ui/button';
 import { ManualMaestroLogo } from '@/components/icons/logo';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Presentation } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const manualStepSchema = z.object({
@@ -41,9 +42,7 @@ const defaultValues: ManualData = {
 const cloneDocumentImages = (documentClone: Document) => {
   Array.from(documentClone.images).forEach(img => {
     if (img.complete) return;
-    img.loading = 'eager'; // Attempt to force load
-    // For cross-origin images, html2canvas with useCORS: true should handle them.
-    // If images are still not loading, more robust preloading strategies might be needed.
+    img.loading = 'eager'; 
   });
 };
 
@@ -60,16 +59,15 @@ async function addCanvasToPdf(
   const canvasWidth = canvas.width;
   const canvasHeight = canvas.height;
 
-  if (canvasWidth === 0 || canvasHeight === 0) return; // Skip empty canvas
+  if (canvasWidth === 0 || canvasHeight === 0) return; 
 
   const totalScaledCanvasHeight = (canvasHeight / canvasWidth) * contentWidth;
 
   if (totalScaledCanvasHeight <= contentHeight) {
     pdfInstance.addImage(canvas.toDataURL('image/png'), 'PNG', itemMargin, itemMargin, contentWidth, totalScaledCanvasHeight);
   } else {
-    // Content needs to be paginated
     let remainingCanvasHeight = canvasHeight;
-    let currentCanvasY = 0; // Y-offset for cropping from the source canvas
+    let currentCanvasY = 0; 
     let isFirstSlice = true;
 
     while (remainingCanvasHeight > 0) {
@@ -78,7 +76,6 @@ async function addCanvasToPdf(
       }
       isFirstSlice = false;
 
-      // Calculate the height of the canvas slice that corresponds to one PDF page's contentHeight
       let sliceCanvasHeight = (contentHeight / contentWidth) * canvasWidth;
       sliceCanvasHeight = Math.min(sliceCanvasHeight, remainingCanvasHeight);
 
@@ -89,7 +86,7 @@ async function addCanvasToPdf(
 
       if (!tempCtx) {
         console.error("Failed to get 2D context for temporary canvas slice.");
-        return; // Or throw error
+        return; 
       }
 
       tempCtx.drawImage(
@@ -118,7 +115,8 @@ async function addCanvasToPdf(
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isExportingPpt, setIsExportingPpt] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<ManualData>({
@@ -149,7 +147,7 @@ export default function Home() {
         });
         return;
     }
-    setIsExporting(true);
+    setIsExportingPdf(true);
 
     try {
       const pdf = new jsPDF({
@@ -160,11 +158,10 @@ export default function Home() {
 
       const pdfPageWidth = pdf.internal.pageSize.getWidth();
       const pdfPageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 30; // Increased margin for better aesthetics
+      const margin = 30; 
       
       let contentHasBeenAdded = false;
 
-      // 1. Capture and add Header (Title and Header Image)
       const headerElement = document.getElementById('pdf-header-content');
       if (headerElement && (watchedData.manualTitle.trim() !== '' || watchedData.headerImageUrl !== '')) {
         const headerCanvas = await html2canvas(headerElement, {
@@ -172,7 +169,7 @@ export default function Home() {
           useCORS: true,
           logging: false,
           onclone: cloneDocumentImages,
-          backgroundColor: '#ffffff', // Ensure background for transparent images
+          backgroundColor: '#ffffff', 
         });
         if (headerCanvas.width > 0 && headerCanvas.height > 0) {
           await addCanvasToPdf(pdf, headerCanvas, pdfPageWidth, pdfPageHeight, margin);
@@ -180,7 +177,6 @@ export default function Home() {
         }
       }
 
-      // 2. Capture and add Each Step on a New Page
       for (let i = 0; i < watchedData.steps.length; i++) {
         const stepElement = document.getElementById(`pdf-step-content-${i}`);
         if (stepElement) {
@@ -193,10 +189,9 @@ export default function Home() {
           });
 
           if (stepCanvas.width > 0 && stepCanvas.height > 0) {
-            if (contentHasBeenAdded) { // If header or a previous step was added
+            if (contentHasBeenAdded) { 
               pdf.addPage();
             } else {
-              // This is the first piece of content (e.g. no header, first step)
               contentHasBeenAdded = true; 
             }
             await addCanvasToPdf(pdf, stepCanvas, pdfPageWidth, pdfPageHeight, margin);
@@ -210,7 +205,7 @@ export default function Home() {
           description: "There is no content to export.",
           variant: "destructive",
         });
-        setIsExporting(false);
+        setIsExportingPdf(false);
         return;
       }
 
@@ -232,13 +227,94 @@ export default function Home() {
         variant: "destructive",
       });
     } finally {
-      setIsExporting(false);
+      setIsExportingPdf(false);
     }
   };
   
-  const onSubmit: SubmitHandler<ManualData> = (_data) => {
+  const handleExportPpt = async () => {
+    if (!isValid) {
+      toast({
+        title: "Form Invalid",
+        description: "Please correct the errors in the form before exporting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsExportingPpt(true);
+
+    try {
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_16x9'; // Standard widescreen layout
+
+      let contentHasBeenAdded = false;
+      const canvasOptions = {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        onclone: cloneDocumentImages,
+        backgroundColor: '#ffffff',
+      };
+      const imageOptions: PptxGenJS.ImageProps = { x: 0.5, y: 0.25, w: 9.0, h: 7.0, sizing: { type: 'contain', w: 9.0, h: 7.0 } };
+
+
+      const headerElement = document.getElementById('pdf-header-content');
+      if (headerElement && (watchedData.manualTitle.trim() !== '' || watchedData.headerImageUrl !== '')) {
+        const headerCanvas = await html2canvas(headerElement, canvasOptions);
+        if (headerCanvas.width > 0 && headerCanvas.height > 0) {
+          const slide = pptx.addSlide();
+          slide.addImage({ ...imageOptions, data: headerCanvas.toDataURL('image/png') });
+          contentHasBeenAdded = true;
+        }
+      }
+
+      for (let i = 0; i < watchedData.steps.length; i++) {
+        const stepElement = document.getElementById(`pdf-step-content-${i}`);
+        if (stepElement) {
+          const stepCanvas = await html2canvas(stepElement, canvasOptions);
+          if (stepCanvas.width > 0 && stepCanvas.height > 0) {
+            const slide = pptx.addSlide();
+            slide.addImage({ ...imageOptions, data: stepCanvas.toDataURL('image/png') });
+            contentHasBeenAdded = true;
+          }
+        }
+      }
+
+      if (!contentHasBeenAdded) {
+        toast({
+          title: "Empty Manual",
+          description: "There is no content to export for PPT.",
+          variant: "destructive",
+        });
+        setIsExportingPpt(false);
+        return;
+      }
+
+      await pptx.writeFile({ fileName: `${watchedData.manualTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'manual'}.pptx` });
+      toast({
+        title: "Success!",
+        description: "Your manual has been exported as a PPTX.",
+      });
+
+    } catch (error) {
+      console.error("Error exporting PPT:", error);
+      let errorMessage = "An error occurred while exporting the PPT. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      toast({
+        title: "PPT Export Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingPpt(false);
+    }
+  };
+
+  const onPdfSubmit: SubmitHandler<ManualData> = (_data) => {
     handleExportPdf();
   };
+
 
   if (!isClient) {
     return (
@@ -269,14 +345,24 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <ManualMaestroLogo />
         </div>
-        <Button onClick={handleSubmit(onSubmit)} disabled={isExporting || !isValid} aria-label="Export to PDF">
-          {isExporting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="mr-2 h-4 w-4" />
-          )}
-          Export PDF
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleExportPpt} disabled={isExportingPdf || isExportingPpt || !isValid} aria-label="Export to PowerPoint">
+            {isExportingPpt ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Presentation className="mr-2 h-4 w-4" />
+            )}
+            Export PPT
+          </Button>
+          <Button onClick={handleSubmit(onPdfSubmit)} disabled={isExportingPdf || isExportingPpt || !isValid} aria-label="Export to PDF">
+            {isExportingPdf ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Export PDF
+          </Button>
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col md:flex-row overflow-hidden">
