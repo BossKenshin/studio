@@ -5,7 +5,7 @@ export function ManualMaestroLogo(props: SVGProps<SVGSVGElement>) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 200 50"
-      width="120"
+      width="140"
       height="30"
       aria-label="Manual Maestro Logo"
       {...props}
