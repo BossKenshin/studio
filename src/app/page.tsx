@@ -14,7 +14,7 @@ import { ManualForm } from '@/components/manual-form';
 import { PdfPreview } from '@/components/pdf-preview';
 import { Button } from '@/components/ui/button';
 import { ManualMaestroLogo } from '@/components/icons/logo';
-import { Download, Loader2, Presentation } from 'lucide-react';
+import { Download, Loader2, Presentation, Github } from 'lucide-react'; // Added Github
 import { useToast } from '@/hooks/use-toast';
 
 const manualStepSchema = z.object({
@@ -42,7 +42,7 @@ const defaultValues: ManualData = {
 const cloneDocumentImages = (documentClone: Document) => {
   Array.from(documentClone.images).forEach(img => {
     if (img.complete) return;
-    img.loading = 'eager'; 
+    img.loading = 'eager';
   });
 };
 
@@ -59,7 +59,7 @@ async function addCanvasToPdf(
   const canvasWidth = canvas.width;
   const canvasHeight = canvas.height;
 
-  if (canvasWidth === 0 || canvasHeight === 0) return; 
+  if (canvasWidth === 0 || canvasHeight === 0) return;
 
   const totalScaledCanvasHeight = (canvasHeight / canvasWidth) * contentWidth;
 
@@ -67,7 +67,7 @@ async function addCanvasToPdf(
     pdfInstance.addImage(canvas.toDataURL('image/png'), 'PNG', itemMargin, itemMargin, contentWidth, totalScaledCanvasHeight);
   } else {
     let remainingCanvasHeight = canvasHeight;
-    let currentCanvasY = 0; 
+    let currentCanvasY = 0;
     let isFirstSlice = true;
 
     while (remainingCanvasHeight > 0) {
@@ -86,7 +86,7 @@ async function addCanvasToPdf(
 
       if (!tempCtx) {
         console.error("Failed to get 2D context for temporary canvas slice.");
-        return; 
+        return;
       }
 
       tempCtx.drawImage(
@@ -100,10 +100,10 @@ async function addCanvasToPdf(
         canvasWidth,
         sliceCanvasHeight
       );
-      
+
       const sliceImgData = tempCanvas.toDataURL('image/png');
       const slicePdfHeight = (sliceCanvasHeight / canvasWidth) * contentWidth;
-      
+
       pdfInstance.addImage(sliceImgData, 'PNG', itemMargin, itemMargin, contentWidth, slicePdfHeight);
 
       remainingCanvasHeight -= sliceCanvasHeight;
@@ -158,8 +158,8 @@ export default function Home() {
 
       const pdfPageWidth = pdf.internal.pageSize.getWidth();
       const pdfPageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 30; 
-      
+      const margin = 30;
+
       let contentHasBeenAdded = false;
 
       const headerElement = document.getElementById('pdf-header-content');
@@ -169,7 +169,7 @@ export default function Home() {
           useCORS: true,
           logging: false,
           onclone: cloneDocumentImages,
-          backgroundColor: '#ffffff', 
+          backgroundColor: '#ffffff',
         });
         if (headerCanvas.width > 0 && headerCanvas.height > 0) {
           await addCanvasToPdf(pdf, headerCanvas, pdfPageWidth, pdfPageHeight, margin);
@@ -189,16 +189,16 @@ export default function Home() {
           });
 
           if (stepCanvas.width > 0 && stepCanvas.height > 0) {
-            if (contentHasBeenAdded) { 
+            if (contentHasBeenAdded) {
               pdf.addPage();
             } else {
-              contentHasBeenAdded = true; 
+              contentHasBeenAdded = true;
             }
             await addCanvasToPdf(pdf, stepCanvas, pdfPageWidth, pdfPageHeight, margin);
           }
         }
       }
-      
+
       if (!contentHasBeenAdded) {
         toast({
           title: "Empty Manual",
@@ -230,7 +230,7 @@ export default function Home() {
       setIsExportingPdf(false);
     }
   };
-  
+
   const handleExportPpt = async () => {
     if (!isValid) {
       toast({
@@ -256,12 +256,12 @@ export default function Home() {
       };
 
       // Define image options for slides: 0.25-inch margin on a 10x5.625 inch slide
-      const imageOptions: PptxGenJS.ImageProps = { 
-        x: 0.25, 
-        y: 0.25, 
+      const imageOptions: PptxGenJS.ImageProps = {
+        x: 0.25,
+        y: 0.25,
         w: 9.5,  // 10 - 0.25 - 0.25
         h: 5.125, // 5.625 - 0.25 - 0.25
-        sizing: { type: 'contain', w: 9.5, h: 5.125 } 
+        sizing: { type: 'contain', w: 9.5, h: 5.125 }
       };
 
 
@@ -354,10 +354,10 @@ export default function Home() {
           <ManualMaestroLogo />
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            onClick={handleExportPpt} 
-            disabled={isExportingPdf || isExportingPpt || !isValid} 
-            aria-label="Export to PowerPoint" 
+          <Button
+            onClick={handleExportPpt}
+            disabled={isExportingPdf || isExportingPpt || !isValid}
+            aria-label="Export to PowerPoint"
             className="bg-orange-500 hover:bg-orange-600 text-white"
           >
             {isExportingPpt ? (
@@ -367,11 +367,11 @@ export default function Home() {
             )}
             Export PPT
           </Button>
-          <Button 
-            onClick={handleSubmit(onPdfSubmit)} 
-            disabled={isExportingPdf || isExportingPpt || !isValid} 
+          <Button
+            variant="secondary" // Changed variant to secondary for grey color
+            onClick={handleSubmit(onPdfSubmit)}
+            disabled={isExportingPdf || isExportingPpt || !isValid}
             aria-label="Export to PDF"
-            variant="secondary"
           >
             {isExportingPdf ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -380,6 +380,15 @@ export default function Home() {
             )}
             Export PDF
           </Button>
+          <a
+            href="https://github.com/BossKenshin"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View source on GitHub"
+            className="p-2 rounded-md hover:bg-accent/10 text-foreground hover:text-accent-foreground transition-colors"
+          >
+            <Github className="h-5 w-5" />
+          </a>
         </div>
       </header>
 
@@ -389,7 +398,7 @@ export default function Home() {
             control={control}
             register={register}
             errors={errors}
-            stepsFields={fields as unknown as ManualData['steps']} 
+            stepsFields={fields as unknown as ManualData['steps']}
             appendStep={append}
             removeStep={remove}
             setValue={setValue as UseFormSetValue<ManualData>}
@@ -402,3 +411,4 @@ export default function Home() {
     </div>
   );
 }
+
