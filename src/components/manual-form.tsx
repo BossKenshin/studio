@@ -78,12 +78,28 @@ export function ManualForm({
               type="file"
               accept="image/*"
               onChange={(e) => handleFileChange(e, 'headerImageUrl')}
-              className={`cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 ${errors.headerImageUrl ? 'border-destructive' : ''}`}
+              className={`h-13 cursor-pointer file:mr-4 file:py-2 file:px-4 file:pb-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 ${errors.headerImageUrl ? 'border-destructive' : ''}`}
             />
           </div>
           {errors.headerImageUrl && (
             <p className="text-sm text-destructive">{errors.headerImageUrl.message}</p>
           )}
+        </div>
+
+        <div className="space-y-2">
+              <Label htmlFor="manualTextArea" className="text-xs text-foreground/80">Description</Label>
+              <textarea id="manualTextArea"
+                                {...register('manualTextArea')}
+                    placeholder="e.g., Carefully lay out all parts on a soft surface..."
+                    className={`flex w-full rounded-md border border-input 
+                      bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground 
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
+                      disabled:cursor-not-allowed disabled:opacity-50 md:text-sm min-h-[80px]
+                    `}>
+
+              </textarea>
+
+
         </div>
 
         <Separator className="my-6" />

@@ -8,5 +8,6 @@ export interface ManualStep {
 export interface ManualData {
   manualTitle: string;
   headerImageUrl: string;
+  manualTextArea: string;
   steps: ManualStep[];
 }

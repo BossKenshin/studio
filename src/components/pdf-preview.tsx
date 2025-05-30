@@ -41,6 +41,10 @@ export function PdfPreview({ data }: PdfPreviewProps) {
                     {/* Placeholder for empty header if no steps either */}
                 </div>
             )}
+
+            <p className="text-gray-600 leading-relaxed whitespace-pre-wrap break-words">
+                {data.manualTextArea || 'Header description goes here.'}
+              </p>
           </div>
 
           {/* Steps */}

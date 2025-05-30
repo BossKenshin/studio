@@ -26,12 +26,14 @@ const manualStepSchema = z.object({
 const manualDataSchema = z.object({
   manualTitle: z.string().min(1, 'Manual title is required').max(150, 'Manual title is too long'),
   headerImageUrl: z.string().or(z.literal('')), // Accepts data URI or empty string
+  manualTextArea: z.string().min(1, 'Manual description is required').max(1000, 'Manual description is too long'),
   steps: z.array(manualStepSchema),
 });
 
 const defaultValues: ManualData = {
   manualTitle: 'My Awesome Manual',
   headerImageUrl: '',
+  manualTextArea: 'Description Manual',
   steps: [{ id: crypto.randomUUID(), title: 'Step 1: Get Started', imageUrl: '', description: 'This is the first thing you need to do.' }],
 };
 
