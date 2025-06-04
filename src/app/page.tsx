@@ -140,12 +140,12 @@ export default function Home() {
 
   const handleExportPdf = async () => {
     if (!isValid) {
-        toast({
-            title: "Form Invalid",
-            description: "Please correct the errors in the form before exporting.",
-            variant: "destructive",
-        });
-        return;
+      toast({
+        title: "Form Invalid",
+        description: "Please correct the errors in the form before exporting.",
+        variant: "destructive",
+      });
+      return;
     }
     setIsExportingPdf(true);
 
@@ -326,39 +326,40 @@ export default function Home() {
 
   if (!isClient) {
     return (
-        <div className="flex flex-col h-screen">
-            <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-md shadow-sm">
-                <ManualMaestroLogo />
-                <div className="w-32 h-10 bg-muted rounded animate-pulse"></div> {/* Placeholder for buttons */}
-            </header>
-            <main className="flex flex-1 overflow-hidden">
-                <div className="w-1/2 p-4 border-r overflow-y-auto animate-pulse">
-                    <div className="h-16 bg-muted rounded mb-4"></div>
-                    <div className="h-10 bg-muted rounded mb-2"></div>
-                    <div className="h-24 bg-muted rounded mb-4"></div>
-                    <div className="h-10 bg-muted rounded mb-2"></div>
-                    <div className="h-24 bg-muted rounded mb-4"></div>
-                </div>
-                <div className="w-1/2 p-4 bg-secondary/20 overflow-y-auto animate-pulse">
-                    <div className="h-full bg-muted rounded"></div>
-                </div>
-            </main>
-        </div>
+      <div className="flex flex-col h-screen">
+        <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-md shadow-sm">
+          <ManualMaestroLogo />
+          <div className="w-32 h-10 bg-muted rounded animate-pulse"></div> {/* Placeholder for buttons */}
+        </header>
+        <main className="flex flex-1 overflow-hidden">
+          <div className="w-1/2 p-4 border-r overflow-y-auto animate-pulse">
+            <div className="h-16 bg-muted rounded mb-4"></div>
+            <div className="h-10 bg-muted rounded mb-2"></div>
+            <div className="h-24 bg-muted rounded mb-4"></div>
+            <div className="h-10 bg-muted rounded mb-2"></div>
+            <div className="h-24 bg-muted rounded mb-4"></div>
+          </div>
+          <div className="w-1/2 p-4 bg-secondary/20 overflow-y-auto animate-pulse">
+            <div className="h-full bg-muted rounded"></div>
+          </div>
+        </main>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col h-screen antialiased">
-      <header className="sticky top-0 z-10 flex items-center justify-between p-3 md:p-4 border-b bg-background/80 backdrop-blur-md shadow-sm">
+      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between p-3 md:p-4 border-b bg-background/80 backdrop-blur-md shadow-sm">
         <div className="flex items-center gap-2">
           <ManualMaestroLogo />
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap gap-2 items-center justify-end w-full mt-2 md:mt-0 md:w-auto">
           <Button
             onClick={handleExportPpt}
             disabled={isExportingPdf || isExportingPpt || !isValid}
             aria-label="Export to PowerPoint"
-            className="bg-orange-500 hover:bg-orange-600 text-white"
+            className="bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto"
           >
             {isExportingPpt ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -367,11 +368,12 @@ export default function Home() {
             )}
             Export PPT
           </Button>
+
           <Button
-          //  variant="secondary" // Changed variant to secondary for grey color
             onClick={handleSubmit(onPdfSubmit)}
             disabled={isExportingPdf || isExportingPpt || !isValid}
             aria-label="Export to PDF"
+            className="w-full sm:w-auto"
           >
             {isExportingPdf ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -380,16 +382,16 @@ export default function Home() {
             )}
             Export PDF
           </Button>
-         <a
-          href="https://github.com/BossKenshin"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="View source on GitHub"
-          className="p-2 rounded-md bg-gray-900 text-white hover:bg-gray-800 hover:text-gray-200 transition-colors"
-        >
-          <Github className="h-5 w-5" />
-        </a>
 
+          <a
+            href="https://github.com/BossKenshin"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View source on GitHub"
+            className="p-2 rounded-md bg-gray-900 text-white hover:bg-gray-800 hover:text-gray-200 transition-colors w-full sm:w-auto text-center"
+          >
+            <Github className="h-5 w-5 mx-auto sm:mx-0" />
+          </a>
         </div>
       </header>
 
